@@ -83,6 +83,7 @@ Cellular Sandbox is part of a growing series of interactive
 science visualizations designed to make complex systems
 feel real and explorable. Each sandbox builds on the last.
 
+- [Quantum Sandbox](https://silent-pfil.github.io/Quantum-Sandbox/) live
 - [DNA Sandbox](https://silent-pfil.github.io/DNA-Sandbox/) — live
 - [EMS Sandbox](https://silent-pfil.github.io/EMS-Sandbox/) — live
 - [Cellular Sandbox](https://silent-pfil.github.io/Cell-Sandbox/) — live
