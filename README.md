@@ -84,9 +84,9 @@ science visualizations designed to make complex systems
 feel real and explorable. Each sandbox builds on the last.
 
 - [DNA Sandbox](https://silent-pfil.github.io/DNA-Sandbox/) — live
-- EMS Sandbox — live
-- Cellular Sandbox — live
-- Emergence Sandbox — in development
+- [EMS Sandbox](https://silent-pfil.github.io/EMS-Sandbox/) — live
+- [Cellular Sandbox](https://silent-pfil.github.io/Cell-Sandbox/) — live
+- [Emergence Sandbox](https://silent-pfil.github.io/Emergence-Sandbox/) — live
 - Neural Transmission Sandbox — in development
 - Newtonian Sandbox — "Universe Sandbox"
 - Einsteinian Sandbox — in development
