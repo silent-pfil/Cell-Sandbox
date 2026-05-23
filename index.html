@@ -1,0 +1,1892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Cellular Sandbox</title>
+<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#020a06;
+  --surface:#04120a;
+  --border:rgba(60,220,120,0.13);
+  --accent:#00e676;
+  --accent2:#69f0ae;
+  --accent3:#ff6b6b;
+  --text:#d4f0e0;
+  --text-dim:rgba(212,240,224,0.42);
+  --mono:'Share Tech Mono',monospace;
+  --display:'Syncopate',sans-serif;
+  --glow:rgba(0,230,118,0.15);
+  --cell-pulse:rgba(0,230,118,0.06);
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--mono);
+  min-height:100vh;
+  overflow-x:hidden;
+  transition:background 0.5s,color 0.5s;
+}
+
+body::after{
+  content:'';
+  position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.025) 2px,rgba(0,0,0,0.025) 4px);
+  pointer-events:none;z-index:1000;
+}
+
+/* ── HEADER ── */
+.header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px;
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;
+  background:rgba(2,10,6,0.96);
+  backdrop-filter:blur(12px);
+  z-index:100;gap:8px;flex-wrap:wrap;
+}
+.header-title{
+  font-family:var(--display);font-size:11px;font-weight:700;
+  letter-spacing:0.22em;color:var(--accent);white-space:nowrap;
+  text-shadow:0 0 22px rgba(0,230,118,0.45);
+}
+.tier-nav{display:flex;gap:3px;flex-wrap:wrap;}
+.tier-btn{
+  background:none;border:1px solid var(--border);
+  color:var(--text-dim);font-family:var(--mono);font-size:10px;
+  padding:5px 10px;cursor:pointer;transition:all 0.2s;letter-spacing:0.1em;
+}
+.tier-btn:hover,.tier-btn.active{
+  border-color:var(--accent);color:var(--accent);
+  background:var(--glow);box-shadow:0 0 10px rgba(0,230,118,0.2);
+}
+.void-btn{
+  background:none;border:1px solid var(--border);color:var(--text-dim);
+  font-family:var(--mono);font-size:10px;padding:5px 10px;
+  cursor:pointer;transition:all 0.2s;letter-spacing:0.1em;white-space:nowrap;
+}
+.void-btn:hover{border-color:var(--text-dim);color:var(--text);}
+
+.tier{display:none;min-height:calc(100vh - 58px);}
+.tier.active{display:block;}
+
+/* ══════════════════════════════════════
+   TIER I — FULL CELL
+══════════════════════════════════════ */
+.t1-layout{
+  display:grid;grid-template-columns:1fr 300px;
+  height:calc(100vh - 58px);
+}
+.t1-canvas-wrap{
+  position:relative;overflow:hidden;
+  border-right:1px solid var(--border);
+  cursor:crosshair;
+}
+#cellCanvas{width:100%;height:100%;display:block;}
+.t1-hint{
+  position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+  font-size:8.5px;color:var(--text-dim);letter-spacing:0.15em;
+  background:rgba(2,10,6,0.7);padding:5px 12px;border:1px solid var(--border);
+  pointer-events:none;white-space:nowrap;
+}
+
+.t1-panel{
+  padding:18px;overflow-y:auto;
+  display:flex;flex-direction:column;gap:0;
+}
+.t1-panel::-webkit-scrollbar{width:3px;}
+.t1-panel::-webkit-scrollbar-thumb{background:var(--border);}
+
+.t1-intro{
+  font-family:var(--display);font-size:9px;font-weight:700;
+  letter-spacing:0.18em;color:var(--text-dim);
+  margin-bottom:16px;line-height:2;
+}
+
+.organelle-card{
+  border:1px solid var(--border);
+  border-bottom:none;
+  padding:12px 14px;
+  cursor:pointer;
+  transition:all 0.18s;
+}
+.organelle-card:last-of-type{border-bottom:1px solid var(--border);}
+.organelle-card:hover,.organelle-card.active{
+  background:var(--glow);border-color:var(--accent);
+}
+.oc-header{display:flex;align-items:center;gap:10px;}
+.oc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.oc-name{font-size:9.5px;letter-spacing:0.12em;color:var(--text);}
+.oc-detail{
+  display:none;margin-top:10px;
+  font-size:8.5px;color:var(--text-dim);line-height:1.9;
+}
+.oc-detail.open{display:block;}
+.oc-why{
+  margin-top:7px;font-size:8.5px;
+  color:var(--accent);line-height:1.8;
+}
+
+/* ══════════════════════════════════════
+   TIER II — ORGANELLE DEEP DIVE
+══════════════════════════════════════ */
+.t2-layout{
+  display:grid;grid-template-columns:200px 1fr 260px;
+  height:calc(100vh - 58px);
+}
+.t2-list{
+  border-right:1px solid var(--border);
+  overflow-y:auto;padding:14px 0;
+}
+.t2-list::-webkit-scrollbar{width:3px;}
+.t2-list::-webkit-scrollbar-thumb{background:var(--border);}
+.t2-item{
+  padding:11px 16px;cursor:pointer;
+  font-size:9px;letter-spacing:0.1em;
+  color:var(--text-dim);transition:all 0.18s;
+  border-left:2px solid transparent;
+  display:flex;align-items:center;gap:9px;
+}
+.t2-item:hover,.t2-item.active{
+  color:var(--accent);background:var(--glow);
+  border-left-color:var(--accent);
+}
+.t2-item-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+
+.t2-canvas-wrap{
+  position:relative;overflow:hidden;
+  border-right:1px solid var(--border);
+  background:radial-gradient(ellipse at center,rgba(0,230,118,0.03) 0%,transparent 70%);
+}
+#organelleCanvas{width:100%;height:100%;display:block;cursor:grab;}
+#organelleCanvas:active{cursor:grabbing;}
+
+.t2-info{padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
+.t2-info::-webkit-scrollbar{width:3px;}
+.t2-info::-webkit-scrollbar-thumb{background:var(--border);}
+
+.t2-title{
+  font-family:var(--display);font-size:16px;font-weight:700;
+  letter-spacing:0.1em;margin-bottom:4px;
+}
+.t2-sub{font-size:9px;color:var(--text-dim);letter-spacing:0.15em;margin-bottom:16px;}
+.info-block{border:1px solid var(--border);padding:13px;margin-bottom:10px;}
+.info-label{font-size:7.5px;color:var(--text-dim);letter-spacing:0.2em;margin-bottom:6px;}
+.info-text{font-size:9.5px;color:var(--text);line-height:1.9;}
+.info-why{
+  border:1px solid rgba(0,230,118,0.2);padding:13px;
+  background:rgba(0,230,118,0.03);
+}
+.info-why .info-label{color:var(--accent);}
+.info-why .info-text{color:var(--accent2);}
+
+/* ══════════════════════════════════════
+   TIER III — CELL TYPES
+══════════════════════════════════════ */
+.t3-layout{display:flex;flex-direction:column;height:calc(100vh - 58px);}
+.t3-tabs{
+  display:flex;border-bottom:1px solid var(--border);
+  background:rgba(2,10,6,0.8);flex-shrink:0;
+}
+.t3-tab{
+  flex:1;padding:12px 8px;
+  background:none;border:none;border-right:1px solid var(--border);
+  color:var(--text-dim);font-family:var(--mono);font-size:9px;
+  cursor:pointer;letter-spacing:0.1em;transition:all 0.18s;text-align:center;
+}
+.t3-tab:last-child{border-right:none;}
+.t3-tab:hover,.t3-tab.active{
+  background:var(--glow);color:var(--accent);
+}
+.t3-content{
+  display:grid;grid-template-columns:1fr 320px;
+  flex:1;overflow:hidden;
+}
+.t3-canvas-wrap{
+  position:relative;overflow:hidden;
+  border-right:1px solid var(--border);
+}
+#cellTypeCanvas{width:100%;height:100%;display:block;}
+.t3-panel{
+  padding:20px;overflow-y:auto;
+  display:flex;flex-direction:column;gap:12px;
+}
+.t3-panel::-webkit-scrollbar{width:3px;}
+.t3-panel::-webkit-scrollbar-thumb{background:var(--border);}
+.ct-name{
+  font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:0.1em;
+}
+.ct-class{font-size:8.5px;color:var(--text-dim);letter-spacing:0.18em;margin-bottom:14px;}
+.ct-block{border:1px solid var(--border);padding:13px;margin-bottom:9px;}
+.ct-label{font-size:7.5px;color:var(--text-dim);letter-spacing:0.2em;margin-bottom:5px;}
+.ct-text{font-size:9.5px;color:var(--text);line-height:1.9;}
+.ct-why{
+  border:1px solid rgba(0,230,118,0.2);padding:13px;
+  background:rgba(0,230,118,0.03);
+}
+.ct-why .ct-label{color:var(--accent);}
+.ct-why .ct-text{color:var(--accent2);font-size:9.5px;line-height:1.9;}
+.ct-features{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;}
+.ct-feature{
+  font-size:8px;padding:3px 8px;
+  border:1px solid var(--border);color:var(--text-dim);
+}
+.ct-feature.present{border-color:var(--accent);color:var(--accent);}
+.ct-feature.absent{border-color:rgba(255,107,107,0.3);color:rgba(255,107,107,0.6);text-decoration:line-through;}
+
+/* ══════════════════════════════════════
+   TIER IV — LIVING SANDBOX
+══════════════════════════════════════ */
+.t4-layout{
+  display:grid;grid-template-columns:1fr 320px;
+  height:calc(100vh - 58px);
+}
+.t4-canvas-wrap{
+  position:relative;overflow:hidden;
+  border-right:1px solid var(--border);
+}
+#sandboxCellCanvas{width:100%;height:100%;display:block;}
+
+/* ATP meter */
+.atp-meter{
+  position:absolute;top:14px;left:14px;right:14px;
+}
+.atp-label{
+  font-size:8px;letter-spacing:0.2em;color:var(--text-dim);margin-bottom:4px;
+  display:flex;justify-content:space-between;
+}
+.atp-label span{color:var(--accent);}
+.atp-bar-bg{
+  height:8px;background:rgba(255,255,255,0.06);
+  border:1px solid var(--border);overflow:hidden;
+}
+.atp-bar-fill{
+  height:100%;background:linear-gradient(90deg,#ff6b6b,#ffeb3b,#00e676);
+  transition:width 0.3s,background 0.3s;
+}
+.cell-status{
+  position:absolute;bottom:14px;left:14px;
+  font-size:9px;letter-spacing:0.15em;
+  color:var(--accent);
+  background:rgba(2,10,6,0.8);padding:5px 10px;
+  border:1px solid var(--border);
+}
+
+.t4-controls{
+  padding:18px;overflow-y:auto;
+  display:flex;flex-direction:column;gap:12px;
+}
+.t4-controls::-webkit-scrollbar{width:3px;}
+.t4-controls::-webkit-scrollbar-thumb{background:var(--border);}
+
+.t4-cell-select{border:1px solid var(--border);padding:14px;}
+.t4-cs-title{font-family:var(--display);font-size:8px;font-weight:700;letter-spacing:0.2em;color:var(--accent);margin-bottom:10px;}
+.cell-type-btns{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+.ct-btn{
+  padding:8px;background:none;border:1px solid var(--border);
+  color:var(--text-dim);font-family:var(--mono);font-size:8.5px;
+  cursor:pointer;letter-spacing:0.08em;transition:all 0.2s;text-align:center;
+}
+.ct-btn.active{background:var(--glow);color:var(--accent);border-color:var(--accent);}
+
+.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.action-btn{
+  padding:11px 6px;background:none;
+  border:1px solid var(--border);
+  color:var(--text-dim);font-family:var(--mono);font-size:8.5px;
+  cursor:pointer;letter-spacing:0.08em;transition:all 0.2s;
+  text-align:center;line-height:1.6;
+}
+.action-btn:hover{background:var(--glow);color:var(--accent);border-color:var(--accent);}
+.action-btn.danger:hover{background:rgba(255,107,107,0.08);color:#ff6b6b;border-color:#ff6b6b;}
+.action-btn:disabled{opacity:0.3;cursor:not-allowed;}
+
+.action-btn .ab-icon{font-size:14px;display:block;margin-bottom:3px;}
+.action-btn .ab-cost{font-size:7px;color:var(--text-dim);margin-top:2px;}
+
+.event-log{border:1px solid var(--border);padding:12px;max-height:180px;overflow-y:auto;}
+.event-log::-webkit-scrollbar{width:3px;}
+.event-log::-webkit-scrollbar-thumb{background:var(--border);}
+.log-title{font-size:7.5px;color:var(--text-dim);letter-spacing:0.2em;margin-bottom:8px;}
+.log-entry{font-size:8.5px;color:var(--text-dim);line-height:1.8;border-bottom:1px solid rgba(60,220,120,0.05);padding-bottom:4px;margin-bottom:4px;}
+.log-entry:last-child{border-bottom:none;}
+.log-entry.good{color:var(--accent);}
+.log-entry.bad{color:#ff6b6b;}
+.log-entry.warn{color:#ffeb3b;}
+.log-entry.info{color:var(--accent2);}
+
+.live-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.ls-cell{border:1px solid var(--border);padding:10px;}
+.ls-label{font-size:7.5px;color:var(--text-dim);letter-spacing:0.15em;margin-bottom:3px;}
+.ls-val{font-size:13px;color:var(--accent);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .t1-layout{grid-template-columns:1fr;grid-template-rows:55vh 1fr;height:auto;}
+  .t1-canvas-wrap{border-right:none;border-bottom:1px solid var(--border);}
+  .t2-layout{grid-template-columns:1fr;grid-template-rows:auto 50vh auto;height:auto;}
+  .t2-list{display:flex;overflow-x:auto;padding:8px;border-right:none;border-bottom:1px solid var(--border);}
+  .t2-item{border-left:none;border-bottom:2px solid transparent;white-space:nowrap;}
+  .t2-item.active{border-bottom-color:var(--accent);border-left-color:transparent;}
+  .t2-canvas-wrap{border-right:none;border-bottom:1px solid var(--border);}
+  .t3-content{grid-template-columns:1fr;grid-template-rows:50vh 1fr;}
+  .t3-canvas-wrap{border-right:none;border-bottom:1px solid var(--border);}
+  .t4-layout{grid-template-columns:1fr;grid-template-rows:55vh 1fr;height:auto;}
+  .t4-canvas-wrap{border-right:none;border-bottom:1px solid var(--border);}
+}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header class="header">
+  <div class="header-title">CELLULAR SANDBOX · <span id="tierLabel">TIER I</span></div>
+  <nav class="tier-nav">
+    <button class="tier-btn active" onclick="setTier(1)">TIER I</button>
+    <button class="tier-btn" onclick="setTier(2)">TIER II</button>
+    <button class="tier-btn" onclick="setTier(3)">TIER III</button>
+    <button class="tier-btn" onclick="setTier(4)">TIER IV</button>
+  </nav>
+  <button class="void-btn" id="voidBtn" onclick="toggleVoid()">☽ VOID</button>
+</header>
+
+<!-- ══════════════════════════════════════ TIER I ══════════════════════════════════════ -->
+<div class="tier active" id="tier1">
+  <div class="t1-layout">
+    <div class="t1-canvas-wrap" id="t1CanvasWrap">
+      <canvas id="cellCanvas"></canvas>
+      <div class="t1-hint">CLICK ANY ORGANELLE TO EXPLORE</div>
+    </div>
+    <div class="t1-panel">
+      <div class="t1-intro">THE ANIMAL CELL<br>EVERY PART ALIVE<br>EVERY PART WITH PURPOSE</div>
+      <div id="organelleList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ TIER II ══════════════════════════════════════ -->
+<div class="tier" id="tier2">
+  <div class="t2-layout">
+    <div class="t2-list" id="t2List"></div>
+    <div class="t2-canvas-wrap">
+      <canvas id="organelleCanvas"></canvas>
+    </div>
+    <div class="t2-info" id="t2Info">
+      <div style="margin:auto;text-align:center;color:var(--text-dim);font-size:9px;letter-spacing:0.15em;line-height:2.5;">SELECT AN<br>ORGANELLE<br>TO BEGIN</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ TIER III ══════════════════════════════════════ -->
+<div class="tier" id="tier3">
+  <div class="t3-layout">
+    <div class="t3-tabs" id="t3Tabs"></div>
+    <div class="t3-content">
+      <div class="t3-canvas-wrap">
+        <canvas id="cellTypeCanvas"></canvas>
+      </div>
+      <div class="t3-panel" id="t3Panel">
+        <div style="color:var(--text-dim);font-size:9px;letter-spacing:0.15em;">SELECT A CELL TYPE</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ TIER IV ══════════════════════════════════════ -->
+<div class="tier" id="tier4">
+  <div class="t4-layout">
+    <div class="t4-canvas-wrap">
+      <canvas id="sandboxCellCanvas"></canvas>
+      <div class="atp-meter">
+        <div class="atp-label">ATP ENERGY <span id="atpPct">78%</span></div>
+        <div class="atp-bar-bg"><div class="atp-bar-fill" id="atpFill" style="width:78%"></div></div>
+      </div>
+      <div class="cell-status" id="cellStatus">HEALTHY · STABLE</div>
+    </div>
+    <div class="t4-controls">
+      <div class="t4-cell-select">
+        <div class="t4-cs-title">CELL TYPE</div>
+        <div class="cell-type-btns" id="cellTypeBtns"></div>
+      </div>
+      <div style="border:1px solid var(--border);padding:14px;">
+        <div class="t4-cs-title">ACTIONS</div>
+        <div class="action-grid" id="actionGrid"></div>
+      </div>
+      <div class="live-stats" id="liveStats"></div>
+      <div class="event-log">
+        <div class="log-title">CELLULAR EVENT LOG</div>
+        <div id="logEntries"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  DATA
+// ============================================================
+const ORGANELLES=[
+  {id:'membrane',name:'CELL MEMBRANE',color:'#00e676',
+   x:0.5,y:0.5,r:0.42,layer:0,
+   fn:'Selectively permeable boundary. Controls what enters and exits the cell. Receives signals from the environment.',
+   why:'The double phospholipid bilayer structure exists because one side must be water-loving (facing cytoplasm and extracellular fluid) and the other water-repelling (the interior of the membrane). That requirement produces the bilayer automatically.',
+   size:'7–10 nm thick'},
+  {id:'nucleus',name:'NUCLEUS',color:'#64b5f6',
+   x:0.45,y:0.45,r:0.12,layer:1,
+   fn:'Command center. Houses DNA. Directs protein synthesis and cell reproduction. Protected by the nuclear envelope.',
+   why:'The nucleus is large relative to other organelles because it holds 2 meters of DNA compacted into a 6-micron space. The double membrane with pores allows selective exchange with the cytoplasm while protecting genetic material.',
+   size:'5–10 μm'},
+  {id:'nucleolus',name:'NUCLEOLUS',color:'#90caf9',
+   x:0.43,y:0.43,r:0.05,layer:2,
+   fn:'Ribosome factory inside the nucleus. Synthesizes ribosomal RNA and assembles ribosome subunits.',
+   why:'Located inside the nucleus because it needs direct access to the DNA sequences that code for ribosomal RNA. Its dense appearance under a microscope reflects its high concentration of RNA and protein.',
+   size:'1–5 μm'},
+  {id:'mito',name:'MITOCHONDRIA',color:'#ff7043',
+   x:0.65,y:0.38,r:0.065,layer:1,
+   fn:'Power plant. Produces ATP through cellular respiration. Converts glucose and oxygen into usable energy.',
+   why:'Mitochondria have their own DNA and two membranes because they were once free-living bacteria. About 1.5 billion years ago a cell engulfed one and kept it. The inner membrane is deeply folded (cristae) to maximize surface area for ATP production — the same logic as intestinal villi.',
+   size:'1–10 μm'},
+  {id:'er_rough',name:'ROUGH ER',color:'#ce93d8',
+   x:0.35,y:0.58,r:0.075,layer:1,
+   fn:'Protein production highway. Covered in ribosomes. Synthesizes and folds proteins destined for secretion or the cell membrane.',
+   why:'Called rough because ribosomes stud its surface. The extensive folded membrane system gives massive surface area. Proteins are made directly into its lumen so they can be immediately processed and packaged — an assembly line design.',
+   size:'Extends throughout cell'},
+  {id:'er_smooth',name:'SMOOTH ER',color:'#b39ddb',
+   x:0.58,y:0.62,r:0.06,layer:1,
+   fn:'Lipid synthesis, detoxification, calcium storage. No ribosomes. Important in liver and muscle cells.',
+   why:'The absence of ribosomes reflects its different job — lipid synthesis, not protein synthesis. In liver cells it detoxifies drugs. In muscle cells it stores and releases calcium to trigger contraction. Form follows function precisely.',
+   size:'Extends throughout cell'},
+  {id:'golgi',name:'GOLGI APPARATUS',color:'#ffcc02',
+   x:0.55,y:0.42,r:0.065,layer:1,
+   fn:'Post office and packaging center. Receives proteins from ER, modifies them, packages them into vesicles, ships them to destinations.',
+   why:'The stacked disc structure (cisternae) reflects a sequential processing line — proteins enter one face (cis), are modified as they move through each layer, and exit the other face (trans) packaged for their destination. The stack IS the process.',
+   size:'1–3 μm'},
+  {id:'lysosome',name:'LYSOSOME',color:'#ef9a9a',
+   x:0.68,y:0.56,r:0.04,layer:1,
+   fn:'Cellular stomach. Contains digestive enzymes. Breaks down waste, old organelles, and invading pathogens.',
+   why:'Its single membrane and acidic interior (pH 4.5) are designed for destruction while protecting the rest of the cell. The enzymes only work at low pH — if the membrane ruptures, the enzymes become inactive in the neutral cytoplasm. A safety mechanism built into the chemistry.',
+   size:'0.1–1.2 μm'},
+  {id:'ribosome',name:'RIBOSOMES',color:'#a5d6a7',
+   x:0.30,y:0.40,r:0.025,layer:1,
+   fn:'Protein assembly machines. Translate mRNA into amino acid chains. Found on rough ER and floating free in cytoplasm.',
+   why:'The two-subunit design (large and small) is universal across all life. The small subunit reads the mRNA code; the large subunit catalyzes the bond between amino acids. This split allows them to clamp around the mRNA strand during translation.',
+   size:'25–30 nm'},
+  {id:'vacuole',name:'VACUOLE',color:'#80cbc4',
+   x:0.38,y:0.35,r:0.045,layer:1,
+   fn:'Storage and waste management. Stores nutrients, waste products, water. Much larger in plant cells.',
+   why:'In animal cells vacuoles are small and temporary — food vacuoles around ingested particles, contractile vacuoles for water balance. The membrane allows selective storage without contaminating the cytoplasm.',
+   size:'Variable'},
+  {id:'centrosome',name:'CENTROSOME',color:'#fff176',
+   x:0.52,y:0.32,r:0.03,layer:1,
+   fn:'Cell division organizer. Organizes the mitotic spindle during cell division. Controls chromosome separation.',
+   why:'Contains two centrioles at right angles. The perpendicular arrangement creates the three-dimensional spindle structure needed to pull chromosomes to opposite poles during division. Only animal cells have them — plants use a different mechanism.',
+   size:'~500 nm'},
+  {id:'cytoplasm',name:'CYTOPLASM',color:'rgba(0,230,118,0.12)',
+   x:0.5,y:0.5,r:0.38,layer:0,
+   fn:'The gel-like fluid filling the cell. Cytosol plus all organelles. Medium for chemical reactions and transport.',
+   why:'The viscosity of cytoplasm is carefully regulated — viscous enough to hold organelles in position, fluid enough to allow diffusion and transport. It is 70% water with dissolved proteins, salts, and molecules. The medium IS the message.',
+   size:'Entire cell interior'},
+];
+
+const CELL_TYPES=[
+  {id:'animal',name:'ANIMAL CELL',class:'EUKARYOTE · HETEROTROPH',
+   color:'#00e676',
+   desc:'The generalist. Every system represented, every organelle present. The template all other cell types are variations of.',
+   why:'Animal cells lack a rigid wall because they need to change shape — to move, engulf, squeeze through capillaries. Flexibility is survival. The tradeoff is vulnerability, compensated for by the immune system and cellular repair mechanisms.',
+   features:[
+     {name:'NUCLEUS',has:true},{name:'MITOCHONDRIA',has:true},{name:'CELL MEMBRANE',has:true},
+     {name:'RIBOSOMES',has:true},{name:'GOLGI',has:true},{name:'LYSOSOMES',has:true},
+     {name:'CELL WALL',has:false},{name:'CHLOROPLASTS',has:false},{name:'CENTRAL VACUOLE',has:false},
+   ],
+   shape:'irregular',color1:'#00e676',color2:'#004d26'},
+  {id:'neuron',name:'NEURON',class:'NERVE CELL · EXCITABLE',
+   color:'#64b5f6',
+   desc:'The communicator. Evolved entirely around the problem of transmitting information across distance at speed. Every feature serves that single purpose.',
+   why:'The long axon exists because distance is the neuron\'s job. Some axons are over a meter long — from spinal cord to toe. The branching dendrites maximize incoming signal reception. Myelin sheathing evolved to speed transmission without increasing axon diameter. Every millimeter of structure is about signal velocity.',
+   features:[
+     {name:'NUCLEUS',has:true},{name:'MITOCHONDRIA',has:true},{name:'AXON',has:true},
+     {name:'DENDRITES',has:true},{name:'MYELIN SHEATH',has:true},{name:'SYNAPTIC TERMINALS',has:true},
+     {name:'CELL WALL',has:false},{name:'LYSOSOMES',has:false},{name:'CENTRIOLES',has:false},
+   ],
+   shape:'neuron',color1:'#64b5f6',color2:'#0d2137'},
+  {id:'rbc',name:'RED BLOOD CELL',class:'ERYTHROCYTE · TRANSPORT',
+   color:'#ef5350',
+   desc:'The optimized carrier. Sacrificed everything that wasn\'t oxygen transport. The most specialized cell in the body.',
+   why:'No nucleus. No mitochondria. No organelles. A red blood cell stripped itself of everything to maximize hemoglobin capacity and flexibility. The biconcave disc shape increases surface area for gas exchange and lets it deform through capillaries narrower than itself. This is evolution editing down to the essential.',
+   features:[
+     {name:'HEMOGLOBIN',has:true},{name:'BICONCAVE SHAPE',has:true},{name:'FLEXIBLE MEMBRANE',has:true},
+     {name:'NUCLEUS',has:false},{name:'MITOCHONDRIA',has:false},{name:'RIBOSOMES',has:false},
+     {name:'GOLGI',has:false},{name:'ER',has:false},{name:'DNA',has:false},
+   ],
+   shape:'rbc',color1:'#ef5350',color2:'#4a0000'},
+  {id:'muscle',name:'MUSCLE CELL',class:'MYOCYTE · CONTRACTILE',
+   color:'#ffa726',
+   desc:'The engine. Built entirely around one action — contraction. Multiple nuclei for a cell that works so hard it needs extra genetic backup.',
+   why:'Muscle cells are long fibers with multiple nuclei because they fuse from many cells during development. The striped appearance under a microscope reveals the repeating sarcomere units — actin and myosin filaments that slide past each other to contract. The stripes ARE the mechanism. Packed with mitochondria because contraction is enormously energy-expensive.',
+   features:[
+     {name:'MULTIPLE NUCLEI',has:true},{name:'MYOFIBRILS',has:true},{name:'SARCOMERES',has:true},
+     {name:'DENSE MITOCHONDRIA',has:true},{name:'SMOOTH ER (SR)',has:true},{name:'T-TUBULES',has:true},
+     {name:'CELL WALL',has:false},{name:'CHLOROPLASTS',has:false},{name:'LYSOSOMES',has:false},
+   ],
+   shape:'muscle',color1:'#ffa726',color2:'#3e2000'},
+  {id:'bacterium',name:'BACTERIUM',class:'PROKARYOTE · CONTRAST',
+   color:'#ce93d8',
+   desc:'The ancestor and the contrast. No nucleus. No membrane-bound organelles. A billion years simpler and still the most successful life form on Earth.',
+   why:'No nucleus because bacteria predate the nuclear membrane by over a billion years. DNA floats free in the cytoplasm. No mitochondria — bacteria ARE the mitochondria\'s ancestor. The cell wall gives rigidity where the animal cell membrane gives flexibility. A completely different solution to the same problem of being alive.',
+   features:[
+     {name:'CELL WALL',has:true},{name:'FLAGELLA',has:true},{name:'RIBOSOMES (70S)',has:true},
+     {name:'PLASMIDS',has:true},{name:'NUCLEOID',has:true},{name:'PILI',has:true},
+     {name:'NUCLEUS',has:false},{name:'MITOCHONDRIA',has:false},{name:'MEMBRANE ORGANELLES',has:false},
+   ],
+   shape:'bacterium',color1:'#ce93d8',color2:'#1a0025'},
+];
+
+const ACTIONS=[
+  {id:'feed',label:'FEED',icon:'🍬',cost:0,gain:18,desc:'Add glucose. ATP rises.',class:''},
+  {id:'hydrate',label:'HYDRATE',icon:'💧',cost:0,gain:6,desc:'Water balance restored.',class:''},
+  {id:'duplicate',label:'DUPLICATE',icon:'⟳',cost:35,gain:0,desc:'Trigger mitosis. Costs ATP.',class:''},
+  {id:'attack',label:'ATTACK',icon:'⚠',cost:20,gain:0,desc:'Pathogen introduced.',class:'danger'},
+  {id:'starve',label:'STARVE',icon:'⬇',cost:25,gain:0,desc:'Remove nutrients. ATP drains.',class:'danger'},
+  {id:'mutate',label:'MUTATE',icon:'⚡',cost:15,gain:0,desc:'Random DNA alteration.',class:'danger'},
+  {id:'repair',label:'REPAIR',icon:'✚',cost:12,gain:8,desc:'Activate repair mechanisms.',class:''},
+  {id:'irradiate',label:'IRRADIATE',icon:'☢',cost:0,gain:0,desc:'Radiation damage. DNA at risk.',class:'danger'},
+];
+
+// ============================================================
+//  TIER I — CELL CANVAS
+// ============================================================
+let c1,cx1,c1raf;
+let c1Time=0;
+let c1Active=null;
+let c1HoverOrg=null;
+
+function initCell(){
+  c1=document.getElementById('cellCanvas');
+  cx1=c1.getContext('2d');
+  resizeCell();
+  window.addEventListener('resize',resizeCell);
+
+  c1.addEventListener('click',e=>{
+    const r=c1.getBoundingClientRect();
+    const mx=(e.clientX-r.left)/r.width;
+    const my=(e.clientY-r.top)/r.height;
+    const hit=hitOrganelle(mx,my);
+    if(hit){
+      c1Active=hit.id===c1Active?null:hit.id;
+      updateOrgPanel();
+    }
+  });
+  c1.addEventListener('mousemove',e=>{
+    const r=c1.getBoundingClientRect();
+    const mx=(e.clientX-r.left)/r.width;
+    const my=(e.clientY-r.top)/r.height;
+    const hit=hitOrganelle(mx,my);
+    c1HoverOrg=hit?hit.id:null;
+    c1.style.cursor=hit?'pointer':'crosshair';
+  });
+
+  buildOrgPanel();
+  if(!c1raf) animateCell();
+}
+
+function resizeCell(){
+  if(!c1) return;
+  const p=c1.parentElement;
+  c1.width=p.offsetWidth*devicePixelRatio;
+  c1.height=p.offsetHeight*devicePixelRatio;
+  cx1.scale(devicePixelRatio,devicePixelRatio);
+}
+
+function hitOrganelle(mx,my){
+  // Check from top layer down
+  const sorted=[...ORGANELLES].filter(o=>o.id!=='cytoplasm'&&o.id!=='membrane').reverse();
+  const W=c1.offsetWidth,H=c1.offsetHeight;
+  const CX=W*0.48,CY=H*0.50;
+  const R=Math.min(W,H)*0.40;
+  for(const org of sorted){
+    const ox=CX+(org.x-0.5)*R*2;
+    const oy=CY+(org.y-0.5)*R*2;
+    const or=org.r*R*2;
+    const dx=(mx*W)-ox, dy=(my*H)-oy;
+    if(dx*dx+dy*dy<or*or) return org;
+  }
+  return null;
+}
+
+function buildOrgPanel(){
+  const list=document.getElementById('organelleList');
+  list.innerHTML='';
+  ORGANELLES.filter(o=>o.id!=='cytoplasm').forEach(o=>{
+    const d=document.createElement('div');
+    d.className='organelle-card'; d.id='oc-'+o.id;
+    d.innerHTML=`<div class="oc-header">
+      <div class="oc-dot" style="background:${o.color}"></div>
+      <div class="oc-name">${o.name}</div>
+    </div>
+    <div class="oc-detail" id="ocd-${o.id}">
+      <div>${o.fn}</div>
+      <div class="oc-why">↳ WHY THIS SHAPE: ${o.why}</div>
+      <div style="margin-top:6px;font-size:7.5px;color:var(--text-dim);letter-spacing:0.15em;">SIZE: ${o.size}</div>
+    </div>`;
+    d.addEventListener('click',()=>{
+      c1Active=c1Active===o.id?null:o.id;
+      updateOrgPanel();
+    });
+    list.appendChild(d);
+  });
+}
+
+function updateOrgPanel(){
+  ORGANELLES.forEach(o=>{
+    const card=document.getElementById('oc-'+o.id);
+    const detail=document.getElementById('ocd-'+o.id);
+    if(!card||!detail) return;
+    const on=c1Active===o.id;
+    card.classList.toggle('active',on);
+    detail.classList.toggle('open',on);
+  });
+}
+
+function drawCell(){
+  if(!cx1) return;
+  const W=c1.offsetWidth,H=c1.offsetHeight;
+  if(!W||!H) return;
+  cx1.clearRect(0,0,W,H);
+
+  // Background
+  cx1.fillStyle=getComputedStyle(document.body).getPropertyValue('--bg').trim()||'#020a06';
+  cx1.fillRect(0,0,W,H);
+
+  // Soft background glow
+  const bg=cx1.createRadialGradient(W*0.5,H*0.5,0,W*0.5,H*0.5,W*0.5);
+  bg.addColorStop(0,'rgba(0,100,40,0.08)');
+  bg.addColorStop(1,'transparent');
+  cx1.fillStyle=bg; cx1.fillRect(0,0,W,H);
+
+  const CX=W*0.48, CY=H*0.50;
+  const R=Math.min(W,H)*0.40;
+  const t=c1Time;
+
+  // ── Cytoplasm fill
+  cx1.save();
+  cx1.beginPath();
+  // Slightly irregular membrane with pulse
+  const pts=24;
+  for(let i=0;i<=pts;i++){
+    const a=(i/pts)*Math.PI*2;
+    const wobble=1+0.012*Math.sin(a*3+t*0.8)+0.008*Math.sin(a*5-t*0.5);
+    const pulse=1+0.008*Math.sin(t*1.2);
+    const rx=CX+Math.cos(a)*R*wobble*pulse;
+    const ry=CY+Math.sin(a)*R*0.92*wobble*pulse;
+    i===0?cx1.moveTo(rx,ry):cx1.lineTo(rx,ry);
+  }
+  cx1.closePath();
+  const cytoGrad=cx1.createRadialGradient(CX,CY,0,CX,CY,R);
+  cytoGrad.addColorStop(0,'rgba(0,60,20,0.55)');
+  cytoGrad.addColorStop(0.7,'rgba(0,40,15,0.45)');
+  cytoGrad.addColorStop(1,'rgba(0,20,8,0.3)');
+  cx1.fillStyle=cytoGrad; cx1.fill();
+  // Membrane
+  cx1.strokeStyle=`rgba(0,230,118,${0.55+0.15*Math.sin(t*1.2)})`;
+  cx1.lineWidth=2.5;
+  cx1.shadowColor='#00e676'; cx1.shadowBlur=12+4*Math.sin(t*1.2);
+  cx1.stroke(); cx1.shadowBlur=0;
+  cx1.restore();
+
+  // ── Draw each organelle
+  const drawOrder=['er_rough','er_smooth','vacuole','mito','golgi','lysosome','centrosome','ribosome','er_rough','nucleus','nucleolus'];
+  const drawn=new Set();
+
+  function drawOrg(o){
+    if(drawn.has(o.id)) return;
+    drawn.add(o.id);
+    const ox=CX+(o.x-0.5)*R*2;
+    const oy=CY+(o.y-0.5)*R*2;
+    const or=o.r*R*2;
+    const isHover=c1HoverOrg===o.id;
+    const isActive=c1Active===o.id;
+    const pulse=isActive?1+0.04*Math.sin(t*4):1+0.015*Math.sin(t*1.5+o.x*10);
+
+    cx1.save();
+    cx1.shadowColor=o.color;
+    cx1.shadowBlur=isActive?22:isHover?14:7;
+
+    if(o.id==='nucleus'){
+      // Nuclear envelope with pores feel
+      cx1.beginPath();
+      cx1.ellipse(ox,oy,or*pulse,or*0.9*pulse,0.2,0,Math.PI*2);
+      const ng=cx1.createRadialGradient(ox-or*0.2,oy-or*0.2,0,ox,oy,or);
+      ng.addColorStop(0,'rgba(100,181,246,0.7)');
+      ng.addColorStop(0.6,'rgba(33,150,243,0.5)');
+      ng.addColorStop(1,'rgba(13,71,161,0.6)');
+      cx1.fillStyle=ng; cx1.fill();
+      cx1.strokeStyle=isActive?'#90caf9':'rgba(100,181,246,0.7)';
+      cx1.lineWidth=isActive?2:1.5; cx1.stroke();
+      // Nuclear pores hint
+      for(let i=0;i<8;i++){
+        const pa=i/8*Math.PI*2;
+        const px=ox+Math.cos(pa)*or*0.95;
+        const py=oy+Math.sin(pa)*or*0.88;
+        cx1.beginPath(); cx1.arc(px,py,2,0,Math.PI*2);
+        cx1.fillStyle='rgba(144,202,249,0.5)'; cx1.fill();
+      }
+    } else if(o.id==='nucleolus'){
+      cx1.beginPath();
+      cx1.ellipse(ox,oy,or*pulse,or*0.9*pulse,0,0,Math.PI*2);
+      cx1.fillStyle='rgba(144,202,249,0.8)'; cx1.fill();
+      cx1.strokeStyle='rgba(187,222,251,0.6)'; cx1.lineWidth=1; cx1.stroke();
+    } else if(o.id==='mito'){
+      // Mitochondria — elongated with inner folds hint
+      cx1.beginPath();
+      cx1.ellipse(ox,oy,or*1.8*pulse,or*0.65*pulse,0.3,0,Math.PI*2);
+      const mg=cx1.createRadialGradient(ox,oy,0,ox,oy,or*1.8);
+      mg.addColorStop(0,'rgba(255,112,67,0.85)');
+      mg.addColorStop(0.5,'rgba(230,74,25,0.7)');
+      mg.addColorStop(1,'rgba(183,28,28,0.5)');
+      cx1.fillStyle=mg; cx1.fill();
+      cx1.strokeStyle=o.color; cx1.lineWidth=1.5; cx1.stroke();
+      // Cristae lines
+      for(let i=-2;i<=2;i++){
+        cx1.beginPath();
+        cx1.moveTo(ox+i*or*0.4,oy-or*0.5);
+        cx1.lineTo(ox+i*or*0.4,oy+or*0.5);
+        cx1.strokeStyle='rgba(255,160,130,0.3)'; cx1.lineWidth=0.8; cx1.stroke();
+      }
+      // Animated flicker
+      cx1.globalAlpha=0.3+0.2*Math.sin(t*4+o.x*5);
+      cx1.beginPath();
+      cx1.ellipse(ox,oy,or*1.6*pulse,or*0.5*pulse,0.3,0,Math.PI*2);
+      cx1.strokeStyle='rgba(255,200,150,0.4)'; cx1.lineWidth=1; cx1.stroke();
+      cx1.globalAlpha=1;
+    } else if(o.id==='er_rough'){
+      // Rough ER — wavy lines
+      for(let i=0;i<4;i++){
+        cx1.beginPath();
+        const ys=oy-or*1.2+i*or*0.7;
+        for(let xi=-or*2;xi<=or*2;xi+=4){
+          const yv=ys+Math.sin((xi/or+t*0.5)*2)*or*0.18;
+          xi===-or*2?cx1.moveTo(ox+xi,yv):cx1.lineTo(ox+xi,yv);
+        }
+        cx1.strokeStyle=`rgba(206,147,216,${0.55-i*0.08})`; cx1.lineWidth=1.5+i*0.3; cx1.stroke();
+        // Ribosome dots
+        for(let xi=-or*1.8;xi<=or*1.8;xi+=or*0.5){
+          cx1.beginPath();
+          cx1.arc(ox+xi,ys+Math.sin((xi/or+t*0.5)*2)*or*0.18,2.5,0,Math.PI*2);
+          cx1.fillStyle='rgba(165,214,167,0.7)'; cx1.fill();
+        }
+      }
+    } else if(o.id==='er_smooth'){
+      for(let i=0;i<3;i++){
+        cx1.beginPath();
+        const ys=oy-or*0.8+i*or*0.7;
+        for(let xi=-or*1.8;xi<=or*1.8;xi+=4){
+          const yv=ys+Math.cos((xi/or+t*0.4)*2.5)*or*0.2;
+          xi===-or*1.8?cx1.moveTo(ox+xi,yv):cx1.lineTo(ox+xi,yv);
+        }
+        cx1.strokeStyle=`rgba(179,157,219,${0.5-i*0.08})`; cx1.lineWidth=1.5; cx1.stroke();
+      }
+    } else if(o.id==='golgi'){
+      // Golgi — stacked crescents
+      for(let i=0;i<5;i++){
+        cx1.beginPath();
+        const offset=i*or*0.25-or*0.5;
+        const w=or*(1.8-i*0.15)*pulse;
+        cx1.ellipse(ox,oy+offset,w,or*0.18,0,0,Math.PI*2);
+        const gg=cx1.createLinearGradient(ox-w,oy+offset,ox+w,oy+offset);
+        gg.addColorStop(0,`rgba(255,204,2,${0.35+i*0.08})`);
+        gg.addColorStop(1,`rgba(255,160,0,${0.25+i*0.06})`);
+        cx1.fillStyle=gg; cx1.fill();
+        cx1.strokeStyle=`rgba(255,230,80,${0.5-i*0.05})`; cx1.lineWidth=1; cx1.stroke();
+      }
+      // Vesicle budding
+      cx1.beginPath();
+      cx1.arc(ox+or*2+3*Math.sin(t*1.5),oy,or*0.28,0,Math.PI*2);
+      cx1.fillStyle='rgba(255,204,2,0.5)'; cx1.fill();
+      cx1.strokeStyle='rgba(255,230,80,0.7)'; cx1.lineWidth=1; cx1.stroke();
+    } else if(o.id==='lysosome'){
+      cx1.beginPath();
+      cx1.arc(ox,oy,or*(pulse+0.05*Math.sin(t*2)),0,Math.PI*2);
+      const lg=cx1.createRadialGradient(ox,oy,0,ox,oy,or);
+      lg.addColorStop(0,'rgba(239,154,154,0.8)');
+      lg.addColorStop(1,'rgba(183,28,28,0.5)');
+      cx1.fillStyle=lg; cx1.fill();
+      cx1.strokeStyle='rgba(239,154,154,0.7)'; cx1.lineWidth=1.5; cx1.stroke();
+      // Enzyme dots inside
+      for(let i=0;i<5;i++){
+        const a=i/5*Math.PI*2+t*0.3;
+        cx1.beginPath();
+        cx1.arc(ox+Math.cos(a)*or*0.4,oy+Math.sin(a)*or*0.4,1.5,0,Math.PI*2);
+        cx1.fillStyle='rgba(255,200,200,0.8)'; cx1.fill();
+      }
+    } else if(o.id==='ribosome'){
+      cx1.beginPath();
+      cx1.arc(ox,oy,or*pulse,0,Math.PI*2);
+      cx1.fillStyle='rgba(165,214,167,0.75)'; cx1.fill();
+      cx1.strokeStyle='rgba(200,230,200,0.6)'; cx1.lineWidth=1; cx1.stroke();
+    } else if(o.id==='vacuole'){
+      cx1.beginPath();
+      cx1.ellipse(ox,oy,or*1.3*pulse,or*pulse,0.5,0,Math.PI*2);
+      cx1.fillStyle='rgba(128,203,196,0.3)'; cx1.fill();
+      cx1.strokeStyle='rgba(128,203,196,0.6)'; cx1.lineWidth=1.5;
+      cx1.setLineDash([3,3]); cx1.stroke(); cx1.setLineDash([]);
+    } else if(o.id==='centrosome'){
+      // Two centrioles at angle
+      for(let ci=0;ci<2;ci++){
+        const ca=ci*Math.PI/2+t*0.1;
+        const cxp=ox+Math.cos(ca)*or*1.2;
+        const cyp=oy+Math.sin(ca)*or*1.2;
+        cx1.beginPath();
+        cx1.ellipse(cxp,cyp,or*0.7,or*0.35,ca,0,Math.PI*2);
+        cx1.fillStyle='rgba(255,241,118,0.5)'; cx1.fill();
+        cx1.strokeStyle='rgba(255,241,118,0.8)'; cx1.lineWidth=1; cx1.stroke();
+      }
+    } else {
+      cx1.beginPath();
+      cx1.arc(ox,oy,or*pulse,0,Math.PI*2);
+      cx1.fillStyle=o.color+'44'; cx1.fill();
+      cx1.strokeStyle=o.color; cx1.lineWidth=1.5; cx1.stroke();
+    }
+
+    // Active glow ring
+    if(isActive){
+      cx1.beginPath();
+      cx1.arc(ox,oy,or*1.35,0,Math.PI*2);
+      cx1.strokeStyle=o.color;
+      cx1.lineWidth=1.5;
+      cx1.globalAlpha=0.4+0.3*Math.sin(t*3);
+      cx1.stroke(); cx1.globalAlpha=1;
+    }
+
+    cx1.shadowBlur=0;
+    cx1.restore();
+  }
+
+  // Draw in order
+  ORGANELLES.filter(o=>o.id==='cytoplasm').forEach(drawOrg);
+  drawOrder.forEach(id=>{
+    const o=ORGANELLES.find(x=>x.id===id);
+    if(o) drawOrg(o);
+  });
+
+  // Floating ribosomes scattered
+  for(let i=0;i<12;i++){
+    const a=i/12*Math.PI*2+t*0.05;
+    const rr=R*(0.2+0.15*Math.sin(i*2.3));
+    const rx=CX+Math.cos(a)*rr;
+    const ry=CY+Math.sin(a)*rr*0.9;
+    cx1.beginPath();
+    cx1.arc(rx,ry,2.5,0,Math.PI*2);
+    cx1.fillStyle='rgba(165,214,167,0.5)'; cx1.fill();
+  }
+
+  c1Time+=0.016;
+}
+
+function animateCell(){
+  drawCell();
+  c1raf=requestAnimationFrame(animateCell);
+}
+
+// ============================================================
+//  TIER II — ORGANELLE 3D
+// ============================================================
+let o2cvs,o2ctx,o2raf;
+let o2RotY=0.4,o2RotX=0.2;
+let o2Drag=false,o2Last=null;
+let o2Time=0;
+let o2Active=null;
+
+function initOrganelleCanvas(){
+  o2cvs=document.getElementById('organelleCanvas');
+  o2ctx=o2cvs.getContext('2d');
+  resizeO2();
+  window.addEventListener('resize',resizeO2);
+  o2cvs.addEventListener('mousedown',e=>{o2Drag=true;o2Last={x:e.clientX,y:e.clientY};});
+  o2cvs.addEventListener('mousemove',e=>{
+    if(!o2Drag) return;
+    o2RotY+=(e.clientX-o2Last.x)*0.015;
+    o2RotX+=(e.clientY-o2Last.y)*0.015;
+    o2Last={x:e.clientX,y:e.clientY};
+  });
+  o2cvs.addEventListener('mouseup',()=>o2Drag=false);
+  o2cvs.addEventListener('mouseleave',()=>o2Drag=false);
+  let lt=null;
+  o2cvs.addEventListener('touchstart',e=>{lt={x:e.touches[0].clientX,y:e.touches[0].clientY};});
+  o2cvs.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    if(!lt) return;
+    o2RotY+=(e.touches[0].clientX-lt.x)*0.015;
+    o2RotX+=(e.touches[0].clientY-lt.y)*0.015;
+    lt={x:e.touches[0].clientX,y:e.touches[0].clientY};
+  },{passive:false});
+  o2cvs.addEventListener('touchend',()=>lt=null);
+  buildT2List();
+  if(!o2raf) animateO2();
+}
+
+function resizeO2(){
+  if(!o2cvs) return;
+  const p=o2cvs.parentElement;
+  o2cvs.width=p.offsetWidth*devicePixelRatio;
+  o2cvs.height=p.offsetHeight*devicePixelRatio;
+  o2ctx.scale(devicePixelRatio,devicePixelRatio);
+}
+
+function buildT2List(){
+  const list=document.getElementById('t2List');
+  list.innerHTML='';
+  ORGANELLES.filter(o=>o.id!=='cytoplasm').forEach(o=>{
+    const d=document.createElement('div');
+    d.className='t2-item'; d.id='t2i-'+o.id;
+    d.innerHTML=`<div class="t2-item-dot" style="background:${o.color}"></div>${o.name}`;
+    d.addEventListener('click',()=>selectO2(o.id));
+    list.appendChild(d);
+  });
+}
+
+function selectO2(id){
+  document.querySelectorAll('.t2-item').forEach(x=>x.classList.remove('active'));
+  const el=document.getElementById('t2i-'+id); if(el) el.classList.add('active');
+  o2Active=id;
+  const o=ORGANELLES.find(x=>x.id===id); if(!o) return;
+  document.getElementById('t2Info').innerHTML=`
+    <div class="t2-title" style="color:${o.color}">${o.name}</div>
+    <div class="t2-sub">ORGANELLE DEEP DIVE · DRAG TO ROTATE</div>
+    <div class="info-block">
+      <div class="info-label">FUNCTION</div>
+      <div class="info-text">${o.fn}</div>
+    </div>
+    <div class="info-block">
+      <div class="info-label">SIZE</div>
+      <div class="info-text">${o.size}</div>
+    </div>
+    <div class="info-why">
+      <div class="info-label">WHY THIS STRUCTURE</div>
+      <div class="info-text">${o.why}</div>
+    </div>`;
+}
+
+function proj3D(x,y,z,cx,cy){
+  const cY=Math.cos(o2RotY),sY=Math.sin(o2RotY);
+  const cX=Math.cos(o2RotX),sX=Math.sin(o2RotX);
+  const rx=x*cY-z*sY, rz=x*sY+z*cY;
+  const ry2=y*cX-rz*sX, rz2=y*sX+rz*cX;
+  const p=600/(600+rz2+200), sc=p*1.5;
+  return{x:cx+rx*sc,y:cy-ry2*sc,z:rz2,sc:p};
+}
+
+function drawO2(){
+  if(!o2ctx) return;
+  const W=o2cvs.offsetWidth,H=o2cvs.offsetHeight;
+  if(!W||!H) return;
+  o2ctx.clearRect(0,0,W,H);
+  o2ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--bg').trim()||'#020a06';
+  o2ctx.fillRect(0,0,W,H);
+
+  const cx=W/2,cy=H/2;
+  const t=o2Time;
+
+  if(!o2Active){
+    o2ctx.fillStyle='rgba(212,240,224,0.2)';
+    o2ctx.font='9px Share Tech Mono';
+    o2ctx.textAlign='center';
+    o2ctx.fillText('SELECT AN ORGANELLE',cx,cy);
+    o2ctx.textAlign='left';
+    return;
+  }
+
+  const o=ORGANELLES.find(x=>x.id===o2Active);
+  if(!o) return;
+
+  // Auto-rotate slowly if not dragging
+  if(!o2Drag) o2RotY+=0.004;
+
+  const R=Math.min(W,H)*0.22;
+
+  // Glow backdrop
+  const gbg=o2ctx.createRadialGradient(cx,cy,0,cx,cy,R*2);
+  gbg.addColorStop(0,o.color+'22'); gbg.addColorStop(1,'transparent');
+  o2ctx.fillStyle=gbg; o2ctx.fillRect(0,0,W,H);
+
+  o2ctx.save();
+
+  if(o.id==='nucleus'){
+    // 3D sphere with nuclear pores
+    const sphereR=R*1.1;
+    const grad=o2ctx.createRadialGradient(cx-sphereR*0.3,cy-sphereR*0.3,0,cx,cy,sphereR);
+    grad.addColorStop(0,'rgba(144,202,249,0.9)');
+    grad.addColorStop(0.5,'rgba(66,165,245,0.7)');
+    grad.addColorStop(1,'rgba(13,71,161,0.8)');
+    o2ctx.beginPath(); o2ctx.arc(cx,cy,sphereR,0,Math.PI*2);
+    o2ctx.fillStyle=grad; o2ctx.fill();
+    o2ctx.shadowColor='#64b5f6'; o2ctx.shadowBlur=30;
+    o2ctx.strokeStyle='rgba(144,202,249,0.5)'; o2ctx.lineWidth=2; o2ctx.stroke();
+    o2ctx.shadowBlur=0;
+    // Nuclear pores in 3D
+    for(let i=0;i<12;i++){
+      const pa=i/12*Math.PI*2+t*0.2;
+      const py=Math.sin(pa*0.5)*0.6;
+      const prad=Math.sqrt(1-py*py);
+      const px=Math.cos(pa)*prad;
+      const pz=Math.sin(pa)*prad;
+      const pp=proj3D(px*sphereR,py*sphereR,pz*sphereR,cx,cy);
+      o2ctx.beginPath(); o2ctx.arc(pp.x,pp.y,4*pp.sc,0,Math.PI*2);
+      o2ctx.fillStyle='rgba(30,80,160,0.8)'; o2ctx.fill();
+      o2ctx.strokeStyle='rgba(180,220,255,0.6)'; o2ctx.lineWidth=1; o2ctx.stroke();
+    }
+    // DNA strands hint inside
+    for(let s=0;s<3;s++){
+      o2ctx.beginPath();
+      for(let xi=-sphereR*0.6;xi<=sphereR*0.6;xi+=5){
+        const yv=cy+Math.sin((xi/20)+t+s*2.1)*sphereR*0.25;
+        xi===-sphereR*0.6?o2ctx.moveTo(cx+xi,yv):o2ctx.lineTo(cx+xi,yv);
+      }
+      o2ctx.strokeStyle=`rgba(144,202,249,${0.2+s*0.05})`; o2ctx.lineWidth=1.5; o2ctx.stroke();
+    }
+  } else if(o.id==='mito'){
+    // Mitochondria 3D with cristae
+    const mW=R*2.2, mH=R*0.8;
+    // Outer membrane
+    const omg=o2ctx.createRadialGradient(cx-mW*0.2,cy-mH*0.3,0,cx,cy,mW);
+    omg.addColorStop(0,'rgba(255,138,101,0.9)');
+    omg.addColorStop(0.6,'rgba(244,81,30,0.7)');
+    omg.addColorStop(1,'rgba(183,28,28,0.6)');
+    o2ctx.beginPath(); o2ctx.ellipse(cx,cy,mW,mH,0,0,Math.PI*2);
+    o2ctx.fillStyle=omg; o2ctx.fill();
+    o2ctx.shadowColor='#ff7043'; o2ctx.shadowBlur=25;
+    o2ctx.strokeStyle='rgba(255,160,130,0.6)'; o2ctx.lineWidth=2; o2ctx.stroke();
+    o2ctx.shadowBlur=0;
+    // Inner membrane / cristae folds
+    for(let i=-5;i<=5;i++){
+      const cx2=cx+i*mW*0.17;
+      const h2=mH*Math.sqrt(1-(i*0.17)*(i*0.17))*0.75;
+      o2ctx.beginPath();
+      o2ctx.moveTo(cx2,cy-h2);
+      o2ctx.bezierCurveTo(cx2+mW*0.08,cy-h2*0.3,cx2+mW*0.08,cy+h2*0.3,cx2,cy+h2);
+      o2ctx.strokeStyle=`rgba(255,200,180,${0.35+0.1*Math.sin(t*2+i)})`; o2ctx.lineWidth=2; o2ctx.stroke();
+    }
+    // DNA circle inside
+    o2ctx.beginPath();
+    o2ctx.arc(cx+mW*0.3,cy,mH*0.35,0,Math.PI*2);
+    o2ctx.strokeStyle='rgba(255,230,200,0.4)'; o2ctx.lineWidth=1.5;
+    o2ctx.setLineDash([3,2]); o2ctx.stroke(); o2ctx.setLineDash([]);
+    // ATP particles
+    for(let i=0;i<6;i++){
+      const a=i/6*Math.PI*2+t*0.8;
+      const px=cx-mW*0.2+Math.cos(a)*mW*0.4;
+      const py=cy+Math.sin(a)*mH*0.35;
+      o2ctx.beginPath(); o2ctx.arc(px,py,3,0,Math.PI*2);
+      o2ctx.fillStyle='rgba(255,230,50,0.7)'; o2ctx.fill();
+    }
+  } else if(o.id==='golgi'){
+    // Stacked 3D cisternae
+    const layers=7;
+    for(let i=layers-1;i>=0;i--){
+      const lw=R*(2.2-i*0.12);
+      const lh=R*0.18;
+      const ly=cy+(i-layers/2)*R*0.32;
+      const curve=Math.sin(i/layers*Math.PI)*R*0.15;
+      const alpha=0.3+i*0.06;
+      const col=i<3?`rgba(255,193,7,${alpha})`:`rgba(255,152,0,${alpha})`;
+      o2ctx.beginPath();
+      o2ctx.ellipse(cx,ly,lw,lh*(1+0.05*Math.sin(t+i)),i*0.05,0,Math.PI*2);
+      o2ctx.fillStyle=col; o2ctx.fill();
+      o2ctx.strokeStyle=`rgba(255,230,80,${alpha+0.1})`; o2ctx.lineWidth=1; o2ctx.stroke();
+    }
+    // Vesicle budding off one side
+    const bx=cx+R*2+6*Math.sin(t*1.2);
+    const by=cy+R*0.3*Math.sin(t*0.7);
+    o2ctx.beginPath(); o2ctx.arc(bx,by,R*0.22,0,Math.PI*2);
+    o2ctx.fillStyle='rgba(255,204,2,0.6)'; o2ctx.fill();
+    o2ctx.strokeStyle='rgba(255,230,80,0.8)'; o2ctx.lineWidth=1.5; o2ctx.stroke();
+    o2ctx.beginPath(); o2ctx.moveTo(cx+R*1.8,cy); o2ctx.lineTo(bx-R*0.22,by);
+    o2ctx.strokeStyle='rgba(255,230,80,0.3)'; o2ctx.lineWidth=1; o2ctx.stroke();
+  } else if(o.id==='ribosome'){
+    // Two subunits
+    const sR=R*0.55;
+    // Large subunit
+    o2ctx.beginPath(); o2ctx.arc(cx,cy,sR*1.2,0,Math.PI*2);
+    o2ctx.fillStyle='rgba(165,214,167,0.8)'; o2ctx.fill();
+    o2ctx.shadowColor='#a5d6a7'; o2ctx.shadowBlur=20;
+    o2ctx.strokeStyle='rgba(200,240,200,0.6)'; o2ctx.lineWidth=2; o2ctx.stroke();
+    o2ctx.shadowBlur=0;
+    // Small subunit
+    o2ctx.beginPath(); o2ctx.ellipse(cx+sR*0.9,cy-sR*0.3,sR*0.75,sR*0.55,0.5,0,Math.PI*2);
+    o2ctx.fillStyle='rgba(129,199,132,0.85)'; o2ctx.fill();
+    o2ctx.strokeStyle='rgba(200,240,200,0.5)'; o2ctx.lineWidth=1.5; o2ctx.stroke();
+    // mRNA thread
+    o2ctx.beginPath();
+    for(let xi=-R*2.5;xi<=R*2.5;xi+=5){
+      const yv=cy+Math.sin(xi*0.04+t*1.5)*4;
+      xi===-R*2.5?o2ctx.moveTo(cx+xi,yv):o2ctx.lineTo(cx+xi,yv);
+    }
+    o2ctx.strokeStyle='rgba(255,180,100,0.5)'; o2ctx.lineWidth=2; o2ctx.stroke();
+    // Growing protein chain
+    o2ctx.beginPath();
+    for(let i=0;i<8;i++){
+      const px=cx-R*0.5-i*R*0.22;
+      const py=cy+R*0.8+Math.sin(i*1.2+t)*R*0.15;
+      i===0?o2ctx.moveTo(px,py):o2ctx.lineTo(px,py);
+      o2ctx.beginPath(); o2ctx.arc(px,py,5,0,Math.PI*2);
+      o2ctx.fillStyle=`hsl(${120+i*18},60%,60%)`; o2ctx.fill();
+    }
+  } else {
+    // Generic 3D sphere for other organelles
+    const sphereR=R;
+    const grad=o2ctx.createRadialGradient(cx-sphereR*0.3,cy-sphereR*0.3,0,cx,cy,sphereR);
+    grad.addColorStop(0,o.color+'dd');
+    grad.addColorStop(0.6,o.color+'88');
+    grad.addColorStop(1,o.color+'44');
+    o2ctx.beginPath(); o2ctx.arc(cx,cy,sphereR*(1+0.02*Math.sin(t*1.5)),0,Math.PI*2);
+    o2ctx.fillStyle=grad; o2ctx.fill();
+    o2ctx.shadowColor=o.color; o2ctx.shadowBlur=25;
+    o2ctx.strokeStyle=o.color+'88'; o2ctx.lineWidth=2; o2ctx.stroke();
+    o2ctx.shadowBlur=0;
+  }
+
+  // Axis indicator
+  o2ctx.fillStyle='rgba(212,240,224,0.2)'; o2ctx.font='8px Share Tech Mono';
+  o2ctx.fillText('DRAG TO ROTATE',12,H-12);
+
+  o2ctx.restore();
+  o2Time+=0.018;
+}
+
+function animateO2(){
+  drawO2();
+  o2raf=requestAnimationFrame(animateO2);
+}
+
+// ============================================================
+//  TIER III — CELL TYPES
+// ============================================================
+let ct3cvs,ct3ctx,ct3raf;
+let ct3Time=0;
+let ct3Active='animal';
+
+function initCellTypes(){
+  ct3cvs=document.getElementById('cellTypeCanvas');
+  ct3ctx=ct3cvs.getContext('2d');
+  resizeCT3();
+  window.addEventListener('resize',resizeCT3);
+  buildT3Tabs();
+  selectCT3('animal');
+  if(!ct3raf) animateCT3();
+}
+
+function resizeCT3(){
+  if(!ct3cvs) return;
+  const p=ct3cvs.parentElement;
+  ct3cvs.width=p.offsetWidth*devicePixelRatio;
+  ct3cvs.height=p.offsetHeight*devicePixelRatio;
+  ct3ctx.scale(devicePixelRatio,devicePixelRatio);
+}
+
+function buildT3Tabs(){
+  const tabs=document.getElementById('t3Tabs');
+  tabs.innerHTML='';
+  CELL_TYPES.forEach(ct=>{
+    const btn=document.createElement('button');
+    btn.className='t3-tab'; btn.id='t3t-'+ct.id;
+    btn.textContent=ct.name;
+    btn.addEventListener('click',()=>selectCT3(ct.id));
+    tabs.appendChild(btn);
+  });
+}
+
+function selectCT3(id){
+  ct3Active=id;
+  document.querySelectorAll('.t3-tab').forEach(b=>b.classList.remove('active'));
+  const tab=document.getElementById('t3t-'+id); if(tab) tab.classList.add('active');
+  const ct=CELL_TYPES.find(x=>x.id===id); if(!ct) return;
+  const panel=document.getElementById('t3Panel');
+  panel.innerHTML=`
+    <div class="ct-name" style="color:${ct.color}">${ct.name}</div>
+    <div class="ct-class">${ct.class}</div>
+    <div class="ct-block">
+      <div class="ct-label">DESCRIPTION</div>
+      <div class="ct-text">${ct.desc}</div>
+    </div>
+    <div class="ct-why">
+      <div class="ct-label">WHY IT LOOKS LIKE THIS</div>
+      <div class="ct-text">${ct.why}</div>
+    </div>
+    <div class="ct-block" style="margin-top:10px;">
+      <div class="ct-label">STRUCTURAL FEATURES</div>
+      <div class="ct-features">${ct.features.map(f=>`<div class="ct-feature ${f.has?'present':'absent'}">${f.name}</div>`).join('')}</div>
+    </div>`;
+}
+
+function drawCellType(){
+  if(!ct3ctx) return;
+  const W=ct3cvs.offsetWidth,H=ct3cvs.offsetHeight;
+  if(!W||!H) return;
+  ct3ctx.clearRect(0,0,W,H);
+  ct3ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--bg').trim()||'#020a06';
+  ct3ctx.fillRect(0,0,W,H);
+
+  const cx=W/2,cy=H/2;
+  const t=ct3Time;
+  const ct=CELL_TYPES.find(x=>x.id===ct3Active);
+  if(!ct) return;
+
+  const R=Math.min(W,H)*0.35;
+
+  // Background glow
+  const bg=ct3ctx.createRadialGradient(cx,cy,0,cx,cy,R*1.5);
+  bg.addColorStop(0,ct.color+'18'); bg.addColorStop(1,'transparent');
+  ct3ctx.fillStyle=bg; ct3ctx.fillRect(0,0,W,H);
+
+  if(ct.id==='animal'){
+    drawGenericCell(ct3ctx,cx,cy,R,t,ct.color,'animal');
+  } else if(ct.id==='neuron'){
+    drawNeuron(ct3ctx,cx,cy,R,t);
+  } else if(ct.id==='rbc'){
+    drawRBC(ct3ctx,cx,cy,R,t);
+  } else if(ct.id==='muscle'){
+    drawMuscle(ct3ctx,cx,cy,R,t);
+  } else if(ct.id==='bacterium'){
+    drawBacterium(ct3ctx,cx,cy,R,t);
+  }
+
+  ct3Time+=0.016;
+}
+
+function drawGenericCell(ctx,cx,cy,R,t,color,type){
+  // Irregular cell body
+  ctx.save();
+  ctx.beginPath();
+  const pts=20;
+  for(let i=0;i<=pts;i++){
+    const a=i/pts*Math.PI*2;
+    const w=1+0.08*Math.sin(a*3+t*0.5)+0.05*Math.sin(a*5-t*0.3);
+    ctx.lineTo(cx+Math.cos(a)*R*w,cy+Math.sin(a)*R*0.9*w);
+  }
+  ctx.closePath();
+  const g=ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+  g.addColorStop(0,'rgba(0,60,20,0.6)');
+  g.addColorStop(1,'rgba(0,20,8,0.3)');
+  ctx.fillStyle=g; ctx.fill();
+  ctx.shadowColor=color; ctx.shadowBlur=15;
+  ctx.strokeStyle=color+'88'; ctx.lineWidth=2; ctx.stroke(); ctx.shadowBlur=0;
+  ctx.restore();
+  // Nucleus
+  ctx.save();
+  ctx.beginPath(); ctx.ellipse(cx-R*0.1,cy-R*0.05,R*0.28,R*0.24,0.2,0,Math.PI*2);
+  ctx.fillStyle='rgba(100,181,246,0.5)'; ctx.fill();
+  ctx.strokeStyle='rgba(100,181,246,0.7)'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.restore();
+  // Mitochondria
+  for(let i=0;i<3;i++){
+    const a=i/3*Math.PI*2+t*0.1;
+    const mx=cx+Math.cos(a)*R*0.52, my=cy+Math.sin(a)*R*0.45;
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(mx,my,R*0.12,R*0.05,a,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,112,67,0.65)'; ctx.fill();
+    ctx.strokeStyle='rgba(255,112,67,0.8)'; ctx.lineWidth=1; ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawNeuron(ctx,cx,cy,R,t){
+  ctx.save();
+  // Cell body (soma)
+  ctx.beginPath(); ctx.arc(cx,cy,R*0.32,0,Math.PI*2);
+  ctx.fillStyle='rgba(33,100,180,0.5)'; ctx.fill();
+  ctx.shadowColor='#64b5f6'; ctx.shadowBlur=20;
+  ctx.strokeStyle='rgba(100,181,246,0.7)'; ctx.lineWidth=2; ctx.stroke(); ctx.shadowBlur=0;
+  // Nucleus inside soma
+  ctx.beginPath(); ctx.arc(cx,cy,R*0.14,0,Math.PI*2);
+  ctx.fillStyle='rgba(144,202,249,0.4)'; ctx.fill();
+  // Axon — long single process
+  ctx.beginPath();
+  ctx.moveTo(cx+R*0.32,cy);
+  ctx.bezierCurveTo(cx+R*0.8,cy-R*0.1,cx+R*1.2,cy+R*0.1,cx+R*2.1,cy+R*0.05);
+  ctx.strokeStyle='rgba(100,181,246,0.7)'; ctx.lineWidth=4; ctx.stroke();
+  // Myelin sheaths
+  for(let i=0;i<5;i++){
+    const mx=cx+R*(0.45+i*0.3);
+    ctx.beginPath(); ctx.ellipse(mx,cy,R*0.07,R*0.13,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.08)'; ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1; ctx.stroke();
+  }
+  // Dendrites
+  const dendAngles=[-2.4,-1.8,-1.2,2.2,2.8,3.4];
+  dendAngles.forEach((a,i)=>{
+    ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*R*0.32,cy+Math.sin(a)*R*0.32);
+    const ex=cx+Math.cos(a)*R*(0.9+0.15*Math.sin(i));
+    const ey=cy+Math.sin(a)*R*(0.9+0.12*Math.cos(i));
+    ctx.bezierCurveTo(
+      cx+Math.cos(a+0.3)*R*0.6,cy+Math.sin(a+0.3)*R*0.6,
+      cx+Math.cos(a-0.2)*R*0.75,cy+Math.sin(a-0.2)*R*0.75,
+      ex,ey
+    );
+    ctx.strokeStyle='rgba(100,181,246,0.45)'; ctx.lineWidth=2; ctx.stroke();
+    // Branch
+    ctx.beginPath(); ctx.moveTo(ex,ey);
+    ctx.lineTo(ex+Math.cos(a+0.5)*R*0.25,ey+Math.sin(a+0.5)*R*0.25);
+    ctx.strokeStyle='rgba(100,181,246,0.28)'; ctx.lineWidth=1; ctx.stroke();
+  });
+  // Action potential pulse traveling axon
+  const pulse=(t*0.8)%2.5;
+  const px=cx+R*0.32+pulse*R*0.72;
+  if(px<cx+R*2.1){
+    ctx.beginPath(); ctx.arc(px,cy+Math.sin(pulse*0.5)*R*0.05,5,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,230,50,0.9)'; ctx.fill();
+    ctx.shadowColor='yellow'; ctx.shadowBlur=10; ctx.fill(); ctx.shadowBlur=0;
+  }
+  // Synaptic terminal
+  ctx.beginPath(); ctx.arc(cx+R*2.1,cy+R*0.05,R*0.09,0,Math.PI*2);
+  ctx.fillStyle='rgba(100,181,246,0.6)'; ctx.fill();
+  ctx.strokeStyle='rgba(144,202,249,0.8)'; ctx.lineWidth=1.5; ctx.stroke();
+  // Neurotransmitter dots
+  for(let i=0;i<4;i++){
+    const a2=i/4*Math.PI*2+t;
+    ctx.beginPath(); ctx.arc(cx+R*2.1+Math.cos(a2)*R*0.14,cy+R*0.05+Math.sin(a2)*R*0.12,2.5,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,220,100,0.7)'; ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawRBC(ctx,cx,cy,R,t){
+  ctx.save();
+  // Biconcave disc — draw from slight angle to show concavity
+  const tilt=0.3;
+  // Outer edge
+  ctx.beginPath(); ctx.ellipse(cx,cy,R*0.95,R*0.95*Math.cos(tilt),0,0,Math.PI*2);
+  const rg=ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+  rg.addColorStop(0,'rgba(239,83,80,0.3)');
+  rg.addColorStop(0.4,'rgba(239,83,80,0.7)');
+  rg.addColorStop(0.75,'rgba(198,40,40,0.85)');
+  rg.addColorStop(1,'rgba(183,28,28,0.6)');
+  ctx.fillStyle=rg; ctx.fill();
+  ctx.shadowColor='#ef5350'; ctx.shadowBlur=20;
+  ctx.strokeStyle='rgba(239,83,80,0.6)'; ctx.lineWidth=2; ctx.stroke(); ctx.shadowBlur=0;
+  // Concavity depression center
+  ctx.beginPath(); ctx.ellipse(cx,cy,R*0.42,R*0.42*Math.cos(tilt),0,0,Math.PI*2);
+  ctx.fillStyle='rgba(150,20,20,0.55)'; ctx.fill();
+  ctx.strokeStyle='rgba(200,60,60,0.3)'; ctx.lineWidth=1; ctx.stroke();
+  // Hemoglobin hint — O2 molecules
+  for(let i=0;i<8;i++){
+    const a=i/8*Math.PI*2+t*0.2;
+    const r2=R*(0.52+0.1*Math.sin(i));
+    if(r2*Math.cos(a)>R*0.4) continue;
+    ctx.beginPath(); ctx.arc(cx+Math.cos(a)*r2*0.7,cy+Math.sin(a)*r2*0.65,3,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,${140+i*8},${100+i*5},0.6)`;ctx.fill();
+  }
+  // Label — no nucleus indicator
+  ctx.fillStyle='rgba(255,100,100,0.5)'; ctx.font='8px Share Tech Mono';
+  ctx.textAlign='center';
+  ctx.fillText('NO NUCLEUS · NO MITOCHONDRIA',cx,cy+R*1.2);
+  ctx.textAlign='left';
+  ctx.restore();
+}
+
+function drawMuscle(ctx,cx,cy,R,t){
+  ctx.save();
+  const contracting=Math.sin(t*1.5)*0.15;
+  // Elongated fiber
+  ctx.beginPath();
+  ctx.ellipse(cx,cy,R*(1.9+contracting),R*0.32,0,0,Math.PI*2);
+  const mg=ctx.createLinearGradient(cx-R*1.9,cy,cx+R*1.9,cy);
+  mg.addColorStop(0,'rgba(255,120,0,0.3)');
+  mg.addColorStop(0.5,'rgba(255,160,50,0.6)');
+  mg.addColorStop(1,'rgba(255,120,0,0.3)');
+  ctx.fillStyle=mg; ctx.fill();
+  ctx.shadowColor='#ffa726'; ctx.shadowBlur=15;
+  ctx.strokeStyle='rgba(255,167,38,0.7)'; ctx.lineWidth=2; ctx.stroke(); ctx.shadowBlur=0;
+  // Sarcomere stripes (the mechanism)
+  const stripeCount=16;
+  for(let i=0;i<=stripeCount;i++){
+    const sx=cx-R*1.85+(i/stripeCount)*R*3.7;
+    const isDark=i%2===0;
+    ctx.beginPath(); ctx.moveTo(sx,cy-R*0.3); ctx.lineTo(sx,cy+R*0.3);
+    ctx.strokeStyle=isDark?'rgba(255,167,38,0.55)':'rgba(255,200,120,0.25)';
+    ctx.lineWidth=isDark?2.5:1; ctx.stroke();
+  }
+  // Multiple nuclei
+  for(let i=0;i<3;i++){
+    const nx=cx+R*(i-1)*0.7;
+    ctx.beginPath(); ctx.ellipse(nx,cy,R*0.1,R*0.07,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,200,100,0.55)'; ctx.fill();
+    ctx.strokeStyle='rgba(255,220,120,0.7)'; ctx.lineWidth=1; ctx.stroke();
+  }
+  // Contraction arrows
+  const arr=0.08+contracting;
+  ctx.fillStyle='rgba(255,200,100,0.4)';
+  ctx.font='9px Share Tech Mono'; ctx.textAlign='center';
+  ctx.fillText(contracting>0?'◀ CONTRACTING ▶':'▶ RELAXING ◀',cx,cy+R*0.6);
+  ctx.textAlign='left';
+  ctx.restore();
+}
+
+function drawBacterium(ctx,cx,cy,R,t){
+  ctx.save();
+  // Capsule shape
+  ctx.beginPath(); ctx.ellipse(cx,cy,R*1.4,R*0.55,0,0,Math.PI*2);
+  const bg=ctx.createRadialGradient(cx,cy,0,cx,cy,R*1.4);
+  bg.addColorStop(0,'rgba(140,80,180,0.35)');
+  bg.addColorStop(0.7,'rgba(100,50,150,0.5)');
+  bg.addColorStop(1,'rgba(60,20,100,0.4)');
+  ctx.fillStyle=bg; ctx.fill();
+  ctx.shadowColor='#ce93d8'; ctx.shadowBlur=18;
+  ctx.strokeStyle='rgba(206,147,216,0.7)'; ctx.lineWidth=2.5; ctx.stroke(); ctx.shadowBlur=0;
+  // Cell wall — extra thick line
+  ctx.beginPath(); ctx.ellipse(cx,cy,R*1.42,R*0.57,0,0,Math.PI*2);
+  ctx.strokeStyle='rgba(206,147,216,0.3)'; ctx.lineWidth=5; ctx.stroke();
+  // Nucleoid (free-floating DNA)
+  ctx.beginPath();
+  for(let i=0;i<3;i++){
+    const a=i/3*Math.PI*2+t*0.3;
+    const dx=Math.cos(a)*R*0.35, dy=Math.sin(a)*R*0.2;
+    i===0?ctx.moveTo(cx+dx,cy+dy):ctx.lineTo(cx+dx,cy+dy);
+  }
+  ctx.closePath();
+  ctx.strokeStyle='rgba(255,200,100,0.5)'; ctx.lineWidth=2;
+  ctx.setLineDash([3,2]); ctx.stroke(); ctx.setLineDash([]);
+  // Ribosomes (70S — smaller)
+  for(let i=0;i<14;i++){
+    const a=i/14*Math.PI*2+t*0.05;
+    const rx=cx+Math.cos(a)*R*(0.55+0.2*Math.sin(i*3));
+    const ry=cy+Math.sin(a)*R*(0.3+0.1*Math.cos(i*2));
+    ctx.beginPath(); ctx.arc(rx,ry,2,0,Math.PI*2);
+    ctx.fillStyle='rgba(165,214,167,0.6)'; ctx.fill();
+  }
+  // Flagella — rotating
+  const fPhase=t*1.2;
+  for(let f=0;f<2;f++){
+    ctx.beginPath();
+    const fx=cx+(f===0?-1:1)*R*1.4;
+    ctx.moveTo(fx,cy);
+    for(let i=0;i<=40;i++){
+      const ft=i/40;
+      const fx2=fx+(f===0?-1:1)*ft*R*1.8;
+      const fy=cy+Math.sin(ft*Math.PI*3+fPhase)*R*0.35*(f===0?1:-1);
+      i===0?ctx.moveTo(fx2,fy):ctx.lineTo(fx2,fy);
+    }
+    ctx.strokeStyle='rgba(206,147,216,0.5)'; ctx.lineWidth=1.5; ctx.stroke();
+  }
+  // Label
+  ctx.fillStyle='rgba(180,100,210,0.5)'; ctx.font='8px Share Tech Mono';
+  ctx.textAlign='center';
+  ctx.fillText('PROKARYOTE · NO MEMBRANE-BOUND ORGANELLES',cx,cy+R*0.8);
+  ctx.textAlign='left';
+  ctx.restore();
+}
+
+function animateCT3(){
+  drawCellType();
+  ct3raf=requestAnimationFrame(animateCT3);
+}
+
+// ============================================================
+//  TIER IV — LIVING SANDBOX
+// ============================================================
+let s4cvs,s4ctx,s4raf;
+let s4Time=0;
+let s4ATP=78;
+let s4CellType='animal';
+let s4State={health:1,infected:false,dividing:false,mutated:false,stressed:false,irradiated:false};
+let s4DivProgress=0;
+let s4Events=[];
+let s4Stats={age:0,divisions:0,attacks:0,mutations:0};
+
+function initSandbox4(){
+  s4cvs=document.getElementById('sandboxCellCanvas');
+  s4ctx=s4cvs.getContext('2d');
+  resizeS4();
+  window.addEventListener('resize',resizeS4);
+  buildT4Controls();
+  updateATP(78);
+  updateLiveStats();
+  logEvent('Cell initialized. Awaiting input.','info');
+  if(!s4raf) animateS4();
+}
+
+function resizeS4(){
+  if(!s4cvs) return;
+  const p=s4cvs.parentElement;
+  s4cvs.width=p.offsetWidth*devicePixelRatio;
+  s4cvs.height=p.offsetHeight*devicePixelRatio;
+  s4ctx.scale(devicePixelRatio,devicePixelRatio);
+}
+
+function buildT4Controls(){
+  // Cell type buttons
+  const ctb=document.getElementById('cellTypeBtns');
+  ctb.innerHTML='';
+  CELL_TYPES.forEach(ct=>{
+    const b=document.createElement('button');
+    b.className='ct-btn'+(ct.id==='animal'?' active':'');
+    b.id='ctb-'+ct.id; b.textContent=ct.name.replace(' CELL','').replace('BACTERIUM','BACTERIUM');
+    b.addEventListener('click',()=>{
+      s4CellType=ct.id;
+      document.querySelectorAll('.ct-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      s4State={health:1,infected:false,dividing:false,mutated:false,stressed:false,irradiated:false};
+      s4DivProgress=0;
+      updateATP(80);
+      logEvent(`Cell type switched to ${ct.name}.`,'info');
+      updateCellStatus();
+    });
+    ctb.appendChild(b);
+  });
+  // Action buttons
+  const ag=document.getElementById('actionGrid');
+  ag.innerHTML='';
+  ACTIONS.forEach(a=>{
+    const b=document.createElement('button');
+    b.className=`action-btn ${a.class}`; b.id='ab-'+a.id;
+    b.innerHTML=`<span class="ab-icon">${a.icon}</span>${a.label}<div class="ab-cost">${a.cost>0?'−'+a.cost+' ATP':a.gain>0?'+'+a.gain+' ATP':'ATP NEUTRAL'}</div>`;
+    b.title=a.desc;
+    b.addEventListener('click',()=>doAction(a.id));
+    ag.appendChild(b);
+  });
+  // Live stats
+  const ls=document.getElementById('liveStats');
+  ls.innerHTML=['AGE','DIVISIONS','ATTACKS','MUTATIONS'].map(k=>`
+    <div class="ls-cell"><div class="ls-label">${k}</div><div class="ls-val" id="ls${k}">0</div></div>`).join('');
+}
+
+function doAction(id){
+  const a=ACTIONS.find(x=>x.id===id);
+  if(!a) return;
+  // Cost check
+  if(a.cost>0&&s4ATP<a.cost){
+    logEvent(`Insufficient ATP for ${a.label}. Need ${a.cost}, have ${Math.floor(s4ATP)}.`,'bad');
+    return;
+  }
+  switch(id){
+    case 'feed':
+      updateATP(Math.min(100,s4ATP+a.gain));
+      s4State.stressed=false;
+      logEvent('Glucose added. Mitochondria responding. ATP rising.','good');
+      break;
+    case 'hydrate':
+      updateATP(Math.min(100,s4ATP+a.gain));
+      logEvent('Osmotic balance restored. Membrane stabilized.','good');
+      break;
+    case 'duplicate':
+      if(s4State.dividing){logEvent('Already dividing.','warn');return;}
+      if(s4ATP<a.cost){logEvent('Not enough ATP to initiate mitosis.','bad');return;}
+      updateATP(s4ATP-a.cost);
+      s4State.dividing=true; s4DivProgress=0;
+      s4Stats.divisions++;
+      logEvent('Mitosis initiated. DNA replicating. Cost: 35 ATP.','info');
+      break;
+    case 'attack':
+      updateATP(s4ATP-a.cost);
+      s4State.infected=true; s4Stats.attacks++;
+      s4State.health=Math.max(0.2,s4State.health-0.3);
+      logEvent('Pathogen introduced. Cell membrane compromised. Immune response activating.','bad');
+      break;
+    case 'starve':
+      updateATP(Math.max(0,s4ATP-a.cost));
+      s4State.stressed=true;
+      logEvent('Nutrient supply removed. ATP draining. Organelles slowing.','bad');
+      break;
+    case 'mutate':
+      updateATP(s4ATP-a.cost);
+      s4State.mutated=!s4State.mutated; s4Stats.mutations++;
+      const outcomes=['DNA mismatch repair failure. Gene expression altered.','Oncogene activated. Abnormal growth signaling detected.','Silent mutation. No observable phenotype change.','Frameshift mutation. Protein folding disrupted.'];
+      logEvent(outcomes[Math.floor(Math.random()*outcomes.length)],'warn');
+      break;
+    case 'repair':
+      updateATP(s4ATP-a.cost+a.gain);
+      s4State.infected=false;
+      s4State.health=Math.min(1,s4State.health+0.25);
+      logEvent('Repair mechanisms activated. Membrane integrity improving.','good');
+      break;
+    case 'irradiate':
+      s4State.irradiated=true; s4Stats.mutations++;
+      s4State.health=Math.max(0.15,s4State.health-0.2);
+      logEvent('Ionizing radiation detected. Double-strand DNA breaks forming. Repair response triggered.','bad');
+      break;
+  }
+  updateCellStatus();
+  updateLiveStats();
+}
+
+function updateATP(v){
+  s4ATP=Math.max(0,Math.min(100,v));
+  document.getElementById('atpPct').textContent=Math.floor(s4ATP)+'%';
+  const fill=document.getElementById('atpFill');
+  fill.style.width=s4ATP+'%';
+  const r=Math.round((1-s4ATP/100)*255);
+  const g=Math.round((s4ATP/100)*230);
+  fill.style.background=`rgb(${r},${g},80)`;
+}
+
+function updateCellStatus(){
+  const el=document.getElementById('cellStatus');
+  if(s4ATP<15) el.textContent='CRITICAL · ATP DEPLETED';
+  else if(s4State.infected) el.textContent='UNDER ATTACK · IMMUNE RESPONSE';
+  else if(s4State.dividing) el.textContent='DIVIDING · MITOSIS IN PROGRESS';
+  else if(s4State.irradiated) el.textContent='IRRADIATED · DNA REPAIR ACTIVE';
+  else if(s4State.mutated) el.textContent='MUTATED · GENE EXPRESSION ALTERED';
+  else if(s4State.stressed) el.textContent='STRESSED · LOW NUTRIENTS';
+  else if(s4ATP>80) el.textContent='HEALTHY · WELL FED';
+  else el.textContent='STABLE · NOMINAL';
+}
+
+function updateLiveStats(){
+  s4Stats.age=Math.floor(s4Time*0.5);
+  const keys=['AGE','DIVISIONS','ATTACKS','MUTATIONS'];
+  const vals=[s4Stats.age,s4Stats.divisions,s4Stats.attacks,s4Stats.mutations];
+  keys.forEach((k,i)=>{
+    const el=document.getElementById('ls'+k);
+    if(el) el.textContent=vals[i];
+  });
+}
+
+function logEvent(msg,type='info'){
+  const log=document.getElementById('logEntries');
+  const e=document.createElement('div');
+  e.className=`log-entry ${type}`;
+  const ts=new Date().toLocaleTimeString('en',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  e.textContent=`[${ts}] ${msg}`;
+  log.insertBefore(e,log.firstChild);
+  while(log.children.length>20) log.removeChild(log.lastChild);
+}
+
+function drawSandboxCell(){
+  if(!s4ctx) return;
+  const W=s4cvs.offsetWidth,H=s4cvs.offsetHeight;
+  if(!W||!H) return;
+  s4ctx.clearRect(0,0,W,H);
+  s4ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--bg').trim()||'#020a06';
+  s4ctx.fillRect(0,0,W,H);
+
+  const t=s4Time;
+  const cx=W/2, cy=H/2;
+  const R=Math.min(W,H)*0.35;
+  const atpRatio=s4ATP/100;
+  const h=s4State.health;
+
+  // Drain ATP if stressed
+  if(s4State.stressed&&s4ATP>0){
+    updateATP(s4ATP-0.04);
+    if(s4ATP<5){
+      logEvent('Cell death imminent. ATP critically low.','bad');
+      s4State.stressed=false;
+    }
+  }
+
+  // Division animation
+  if(s4State.dividing){
+    s4DivProgress+=0.003;
+    if(s4DivProgress>=1){
+      s4State.dividing=false; s4DivProgress=0;
+      logEvent('Mitosis complete. Two daughter cells produced.','good');
+      updateATP(s4ATP+10);
+      updateLiveStats();
+    }
+  }
+
+  // Background glow — color shifts with state
+  const glowColor=s4State.infected?'rgba(255,50,50,0.1)':s4State.irradiated?'rgba(180,100,255,0.08)':s4State.mutated?'rgba(255,200,0,0.08)':'rgba(0,100,40,0.08)';
+  const bg=s4ctx.createRadialGradient(cx,cy,0,cx,cy,R*1.8);
+  bg.addColorStop(0,glowColor); bg.addColorStop(1,'transparent');
+  s4ctx.fillStyle=bg; s4ctx.fillRect(0,0,W,H);
+
+  if(s4State.dividing){
+    // Draw two separating cells
+    const sep=s4DivProgress*R*0.9;
+    for(let d=0;d<2;d++){
+      const dcx=d===0?cx-sep:cx+sep;
+      const scale=0.85+s4DivProgress*0.15;
+      s4ctx.save();
+      s4ctx.globalAlpha=0.5+s4DivProgress*0.5;
+      drawSandboxCellBody(s4ctx,dcx,cy,R*0.75*scale,t,atpRatio,h,false);
+      s4ctx.restore();
+    }
+    // Spindle fibers
+    s4ctx.save();
+    s4ctx.strokeStyle='rgba(255,241,118,0.3)'; s4ctx.lineWidth=1;
+    for(let i=0;i<5;i++){
+      const yo=(i-2)*R*0.2;
+      s4ctx.beginPath(); s4ctx.moveTo(cx-sep,cy+yo); s4ctx.lineTo(cx+sep,cy+yo); s4ctx.stroke();
+    }
+    s4ctx.restore();
+    // Progress label
+    s4ctx.fillStyle='rgba(255,241,118,0.6)'; s4ctx.font='9px Share Tech Mono';
+    s4ctx.textAlign='center';
+    s4ctx.fillText(`MITOSIS · ${Math.floor(s4DivProgress*100)}%`,cx,cy+R*1.15);
+    s4ctx.textAlign='left';
+  } else {
+    drawSandboxCellBody(s4ctx,cx,cy,R,t,atpRatio,h,true);
+  }
+
+  s4Time+=0.016;
+  updateLiveStats();
+}
+
+function drawSandboxCellBody(ctx,cx,cy,R,t,atp,health,detailed){
+  const infected=s4State.infected;
+  const irradiated=s4State.irradiated;
+  const mutated=s4State.mutated;
+
+  // Membrane
+  ctx.save();
+  ctx.beginPath();
+  const pts=24;
+  for(let i=0;i<=pts;i++){
+    const a=i/pts*Math.PI*2;
+    const stress=infected?0.04*Math.sin(a*7+t*3):0;
+    const wobble=1+0.012*Math.sin(a*3+t*0.8)+stress;
+    ctx.lineTo(cx+Math.cos(a)*R*wobble,cy+Math.sin(a)*R*0.93*wobble);
+  }
+  ctx.closePath();
+  const atpCol=`rgba(${Math.round((1-atp)*60)},${Math.round(atp*80+20)},${Math.round(atp*30)},0.55)`;
+  ctx.fillStyle=atpCol; ctx.fill();
+  const memColor=infected?'rgba(255,80,80,':(health<0.4?'rgba(255,150,50,':'rgba(0,230,118,');
+  const memAlpha=0.5+0.2*Math.sin(t*(infected?3:1.2));
+  ctx.shadowColor=infected?'#ff5050':'#00e676';
+  ctx.shadowBlur=10+5*Math.sin(t*1.5);
+  ctx.strokeStyle=memColor+memAlpha+')'; ctx.lineWidth=2.5; ctx.stroke(); ctx.shadowBlur=0;
+  ctx.restore();
+
+  if(detailed){
+    // Nucleus — shows DNA damage if irradiated
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(cx-R*0.08,cy-R*0.05,R*0.24,R*0.2,0.2,0,Math.PI*2);
+    const nucColor=irradiated?'rgba(180,100,255,0.6)':mutated?'rgba(255,200,0,0.5)':'rgba(100,181,246,0.5)';
+    ctx.fillStyle=nucColor; ctx.fill();
+    ctx.strokeStyle=irradiated?'rgba(200,150,255,0.8)':mutated?'rgba(255,220,50,0.7)':'rgba(100,181,246,0.7)';
+    ctx.lineWidth=1.5; ctx.stroke();
+    if(irradiated){
+      // DNA damage indicator — broken lines
+      ctx.strokeStyle='rgba(255,100,100,0.6)'; ctx.lineWidth=1.5;
+      ctx.setLineDash([2,3]);
+      ctx.beginPath(); ctx.moveTo(cx-R*0.18,cy-R*0.12); ctx.lineTo(cx,cy+R*0.1); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
+
+    // Mitochondria — dimmer when ATP is low
+    const mitoAlpha=0.3+atp*0.55;
+    for(let i=0;i<4;i++){
+      const a=i/4*Math.PI*2+t*0.08;
+      const mx=cx+Math.cos(a)*R*0.52, my=cy+Math.sin(a)*R*0.45;
+      ctx.save();
+      ctx.beginPath(); ctx.ellipse(mx,my,R*0.11,R*0.045,a,0,Math.PI*2);
+      ctx.fillStyle=`rgba(255,112,67,${mitoAlpha})`; ctx.fill();
+      ctx.strokeStyle=`rgba(255,112,67,${mitoAlpha+0.1})`; ctx.lineWidth=1; ctx.stroke();
+      // ATP sparks
+      if(atp>0.4){
+        ctx.globalAlpha=0.3+0.3*Math.sin(t*4+i);
+        ctx.beginPath(); ctx.arc(mx,my,2,0,Math.PI*2);
+        ctx.fillStyle='rgba(255,230,50,0.8)'; ctx.fill();
+        ctx.globalAlpha=1;
+      }
+      ctx.restore();
+    }
+
+    // Infection particles
+    if(infected){
+      for(let i=0;i<8;i++){
+        const a=i/8*Math.PI*2+t*0.5;
+        const rd=R*(0.3+0.4*Math.sin(i+t*0.3));
+        ctx.save();
+        ctx.beginPath(); ctx.arc(cx+Math.cos(a)*rd,cy+Math.sin(a)*rd*0.9,4,0,Math.PI*2);
+        ctx.fillStyle=`rgba(255,80,80,${0.4+0.3*Math.sin(t*3+i)})`; ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // Mutation indicator
+    if(mutated){
+      ctx.save();
+      ctx.strokeStyle='rgba(255,200,0,0.3)'; ctx.lineWidth=1;
+      ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.arc(cx,cy,R*0.7,0,Math.PI*2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    // Stress visual — organelles clustering
+    if(s4State.stressed){
+      ctx.save();
+      ctx.globalAlpha=0.3+0.15*Math.sin(t*2);
+      ctx.strokeStyle='rgba(255,150,50,0.5)'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(cx,cy,R*0.5,0,Math.PI*2); ctx.stroke();
+      ctx.globalAlpha=1;
+      ctx.restore();
+    }
+
+    // Ribosomes
+    for(let i=0;i<10;i++){
+      const a=i/10*Math.PI*2+t*0.04;
+      ctx.beginPath();
+      ctx.arc(cx+Math.cos(a)*R*(0.25+0.15*Math.sin(i*3)),cy+Math.sin(a)*R*(0.25+0.1*Math.cos(i*2)),2,0,Math.PI*2);
+      ctx.fillStyle=`rgba(165,214,167,${0.3+atp*0.3})`; ctx.fill();
+    }
+  }
+}
+
+function animateS4(){
+  drawSandboxCell();
+  s4raf=requestAnimationFrame(animateS4);
+}
+
+// ============================================================
+//  VOID TOGGLE
+// ============================================================
+let isVoid=true;
+function toggleVoid(){
+  isVoid=!isVoid;
+  document.getElementById('voidBtn').textContent=isVoid?'☽ VOID':'☼ BIO';
+  const r=document.documentElement.style;
+  if(isVoid){
+    r.setProperty('--bg','#020a06');
+    r.setProperty('--border','rgba(60,220,120,0.13)');
+    r.setProperty('--text','#d4f0e0');
+    r.setProperty('--text-dim','rgba(212,240,224,0.42)');
+    r.setProperty('--accent','#00e676');
+    r.setProperty('--glow','rgba(0,230,118,0.15)');
+    document.querySelector('.header').style.background='rgba(2,10,6,0.96)';
+  }else{
+    r.setProperty('--bg','#f0f7f2');
+    r.setProperty('--border','rgba(20,80,40,0.15)');
+    r.setProperty('--text','#102018');
+    r.setProperty('--text-dim','rgba(16,32,24,0.5)');
+    r.setProperty('--accent','#00701a');
+    r.setProperty('--glow','rgba(0,112,26,0.12)');
+    document.querySelector('.header').style.background='rgba(240,247,242,0.96)';
+  }
+}
+
+// ============================================================
+//  TIER SWITCHING
+// ============================================================
+let curTier=1;
+function setTier(n){
+  curTier=n;
+  const labels=['I','II','III','IV'];
+  document.getElementById('tierLabel').textContent='TIER '+labels[n-1];
+  document.querySelectorAll('.tier-btn').forEach((b,i)=>b.classList.toggle('active',i+1===n));
+  [1,2,3,4].forEach(i=>document.getElementById('tier'+i).classList.toggle('active',i===n));
+  setTimeout(()=>{
+    if(n===1){ resizeCell(); }
+    if(n===2&&!o2ctx) initOrganelleCanvas();
+    else if(n===2) resizeO2();
+    if(n===3&&!ct3ctx) initCellTypes();
+    else if(n===3) resizeCT3();
+    if(n===4&&!s4ctx) initSandbox4();
+    else if(n===4) resizeS4();
+  },50);
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+window.addEventListener('load',()=>{
+  initCell();
+});
+</script>
+</body>
+</html>
